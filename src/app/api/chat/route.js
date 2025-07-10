@@ -1,46 +1,51 @@
 import { NextResponse } from 'next/server';
-import {inference} from "@/utils/huggingFace";
 
 export async function POST(request) {
     try {
         const formData = await request.formData();
         const prompt = formData.get('prompt');
-        const max_length = formData.get('max_length') ? parseInt(formData.get('max_length')) : 200;
-        const temperature = formData.get('temperature') ? parseFloat(formData.get('temperature')) : 0.7;
-        console.log(prompt);
 
         if (!prompt) {
-            return NextResponse.json({
-                error: 'Missing prompt parameter',
-            }, { status: 400 });
+            return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
         }
 
-        const out = await inference.textClassification({
-            model: "appohfaiths/dummy-model",
-            inputs: prompt,
+        // Make request to local Ollama instance
+        const ollamaResponse = await fetch('http://localhost:11434/api/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: 'llama3.1:latest',
+                prompt: prompt,
+                stream: false
+            }),
+        });
 
-        })
+        if (!ollamaResponse.ok) {
+            const errorText = await ollamaResponse.text();
+            throw new Error(`Ollama API error: ${ollamaResponse.status} - ${errorText}`);
+        }
 
-        console.log('Inference Output:', out);
-
-        const classification = out;
-
-        return NextResponse.json({
-            prompt: prompt,
-            classification,
-            // You might want to include additional metadata
-            metadata: {
-                max_length,
-                temperature,
-                model: "appohfaiths/dummy-model"
-            }
+        const data = await ollamaResponse.json();
+        
+        return NextResponse.json({ 
+            response: data.response,
+            model: data.model,
+            done: data.done
         });
 
     } catch (error) {
-        console.error('Generation error:', error);
-        return NextResponse.json({
-            error: 'Failed to generate text',
-            details: error.message
+        console.error('API Error:', error);
+        let errorMessage = error.message;
+        if (error.message.includes('ECONNREFUSED')) {
+            errorMessage = 'Ollama server is not running. Please start it with: ollama serve';
+        } else if (error.message.includes('404')) {
+            errorMessage = 'Model not found. Available model: llama3.1:latest';
+        }
+        
+        return NextResponse.json({ 
+            error: errorMessage || 'Failed to process request' 
         }, { status: 500 });
     }
 }
