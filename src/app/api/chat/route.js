@@ -16,7 +16,7 @@ export async function POST(request) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                model: 'llama3.1:latest',
+                model: 'llama3.1:8b',
                 prompt: prompt,
                 stream: false
             }),
@@ -41,7 +41,7 @@ export async function POST(request) {
         if (error.message.includes('ECONNREFUSED')) {
             errorMessage = 'Ollama server is not running. Please start it with: ollama serve';
         } else if (error.message.includes('404')) {
-            errorMessage = 'Model not found. Available model: llama3.1:latest';
+            errorMessage = 'Model not found. Available model: llama3.1:8b';
         }
         
         return NextResponse.json({ 

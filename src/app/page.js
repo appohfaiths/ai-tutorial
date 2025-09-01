@@ -33,7 +33,7 @@ export default function Home() {
             const formData = new FormData();
             formData.append('prompt', text);
 
-            const response = await fetch('/api/chat', {
+            const response = await fetch('/api/text-classification', {
                 method: 'POST',
                 body: formData,
             });
